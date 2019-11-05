@@ -1,7 +1,6 @@
-# Sprite classes for platform game
 import pygame as pg
 from settings import *
-vec = pg.math.Vector2
+vec = pg.math.Vector2 # 二维变量
 
 class Player(pg.sprite.Sprite):
     def __init__(self, game):
@@ -12,11 +11,11 @@ class Player(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
         self.pos = vec(WIDTH / 2, HEIGHT / 2)
-        self.vel = vec(0, 0)
-        self.acc = vec(0, 0)
+        self.vel = vec(0, 0) # 速度
+        self.acc = vec(0, 0) # 加速度
 
     def jump(self):
-        # jump only if standing on a platform
+        # 跳跃到其他平台 - 玩家对象x加减1，为了做碰撞检测，只有站立在平台上，才能实现跳跃
         self.rect.x += 1
         hits = pg.sprite.spritecollide(self, self.game.platforms, False)
         self.rect.x -= 1

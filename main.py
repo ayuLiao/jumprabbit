@@ -1,8 +1,3 @@
-# KidsCanCode - Game Development with Pygame video series
-# Jumpy! (a platform game) - Part 5
-# Video link: https://youtu.be/OmlQ0XCvIn0
-# Jumping
-
 import pygame as pg
 import random
 from settings import *
@@ -10,16 +5,17 @@ from sprites import *
 
 class Game:
     def __init__(self):
-        # initialize game window, etc
         pg.init()
         pg.mixer.init()
         self.screen = pg.display.set_mode((WIDTH, HEIGHT))
         pg.display.set_caption(TITLE)
         self.clock = pg.time.Clock()
         self.running = True
+        # 设置绘制时使用的字体
+        self.font_name = pg.font.match_font(FONT_NAME)
 
     def new(self):
-        # start a new game
+        self.score = 0
         self.all_sprites = pg.sprite.Group()
         self.platforms = pg.sprite.Group()
         self.player = Player(self)
@@ -31,7 +27,6 @@ class Game:
         self.run()
 
     def run(self):
-        # Game Loop
         self.playing = True
         while self.playing:
             self.clock.tick(FPS)
@@ -40,7 +35,6 @@ class Game:
             self.draw()
 
     def update(self):
-        # Game Loop - Update
         self.all_sprites.update()
         # # 玩家在界面中时(y>0)，进行碰撞检测，检测玩家是否碰撞到平台
         if self.player.vel.y > 0:
@@ -59,43 +53,87 @@ class Game:
                 plat.rect.y += abs(self.player.vel.y)
                 if plat.rect.top >= HEIGHT: 
                     plat.kill()
+                    # 分数增加 - 平台销毁，分数相加
+                    self.score += 10
+
+         # 死亡 - 玩家底部大于游戏框高度
+        if self.player.rect.bottom > HEIGHT:
+            for sprite in self.all_sprites:
+                sprite.rect.y -= max(self.player.vel.y, 10)
+                # 元素底部小于0 - 说明在游戏框外面，将其删除
+                if sprite.rect.bottom < 0:
+                    sprite.kill()
+
+        # 平台个数为0，游戏结束
+        if len(self.platforms) == 0:
+            self.playing = False
 
         # 判断平台数，产生新的平台
         while len(self.platforms) < 6:
             width = random.randrange(50, 100)
-            # 随机生成平台
+            # 平台虽然是随机生成的，但会生成在某一个范围内
             p = Platform(random.randrange(0, WIDTH - width),
                          random.randrange(-75, -30),
                          width, 20)
             self.platforms.add(p)
             self.all_sprites.add(p)
 
+    # 事件处理
     def events(self):
-        # Game Loop - events
         for event in pg.event.get():
-            # check for closing window
+            # 关闭
             if event.type == pg.QUIT:
                 if self.playing:
                     self.playing = False
                 self.running = False
+            # 跳跃
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_SPACE:
                     self.player.jump()
 
     def draw(self):
-        # Game Loop - draw
+        # 绘制
         self.screen.fill(BLACK)
         self.all_sprites.draw(self.screen)
-        # *after* drawing everything, flip the display
+        # 绘制文字 - 具体的分数
+        self.draw_text(str(self.score), 22, WHITE, WIDTH / 2, 15)
+        # 翻转
         pg.display.flip()
 
+    # 开始游戏的钩子函数
     def show_start_screen(self):
         # game splash/start screen
-        pass
+        self.screen.fill(BGCOLOR) # 填充颜色
+        # 绘制文字
+        self.draw_text(TITLE, 48, WHITE, WIDTH / 2, HEIGHT / 4)
+        self.draw_text("Left and right button move, space bar jump", 22, WHITE, WIDTH / 2, HEIGHT / 2)
+        self.draw_text("Press any key to start the game", 22, WHITE, WIDTH / 2, HEIGHT * 3 / 4)
+        # 画布翻转
+        pg.display.flip()
+        self.wait_for_key() # 等待用户敲击键盘中的仍以位置
+
+    def wait_for_key(self):
+        waiting = True
+        while waiting:
+            self.clock.tick(FPS)
+            for event in pg.event.get():
+                if event.type == pg.QUIT: # 点击退出，结束等待循环
+                    waiting = False
+                    self.running = False
+                if event.type == pg.KEYUP: # 按下键盘，结束等待循环
+                    waiting = False
 
     def show_go_screen(self):
         # game over/continue
         pass
+
+    # 绘制文字
+    def draw_text(self, text, size, color, x, y):
+        font = pg.font.Font(self.font_name, size) # 设置字体与大小
+        text_surface = font.render(text, True, color) # 设置颜色
+        text_rect = text_surface.get_rect() # 获得字体对象
+        text_rect.midtop = (x, y) # 定义位置
+        self.screen.blit(text_surface, text_rect) # 在屏幕中绘制字体
 
 g = Game()
 g.show_start_screen()
