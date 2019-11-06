@@ -1,5 +1,6 @@
 import pygame as pg
 import random
+import os
 from settings import *
 from sprites import *
 
@@ -13,6 +14,21 @@ class Game:
         self.running = True
         # 设置绘制时使用的字体
         self.font_name = pg.font.match_font(FONT_NAME)
+        self.load_data()
+
+    def load_data(self): # 加载数据
+        self.dir = os.path.dirname(__file__)
+        filepath = os.path.join(self.dir, HS_FILE)
+        with open(filepath, 'r') as f:
+            try:
+                self.highscore = int(f.read())
+            except:
+                self.highscore = 0
+        img_dir = os.path.join(self.dir, 'img')
+        # 加载精灵图片
+        self.spritesheet = Spritesheet(os.path.join(img_dir, SPRITESHEET))
+
+
 
     def new(self):
         self.score = 0
@@ -93,7 +109,7 @@ class Game:
 
     def draw(self):
         # 绘制
-        self.screen.fill(BLACK)
+        self.screen.fill(BGCOLOR)
         self.all_sprites.draw(self.screen)
         # 绘制文字 - 具体的分数
         self.draw_text(str(self.score), 22, WHITE, WIDTH / 2, 15)
@@ -125,7 +141,26 @@ class Game:
 
     def show_go_screen(self):
         # game over/continue
-        pass
+        if not self.running: # 是否在运行
+            return
+        self.screen.fill(BGCOLOR) # 游戏框背景颜色填充
+        # 绘制文字
+        self.draw_text("GAME OVER", 48, WHITE, WIDTH / 2, HEIGHT / 4)
+        self.draw_text("Score: " + str(self.score), 22, WHITE, WIDTH / 2, HEIGHT / 2)
+        self.draw_text("Press a key to play again", 22, WHITE, WIDTH / 2, HEIGHT * 3 / 4)
+        # 判断分数
+        if self.score > self.highscore:
+            self.highscore = self.score
+            self.draw_text("NEW HIGH SCORE!", 22, WHITE, WIDTH / 2, HEIGHT / 2 + 40)
+            # 记录新的最高分到文件中 - 持久化
+            with open(os.path.join(self.dir, HS_FILE), 'w') as f:
+                f.write(str(self.score))
+        else:
+            self.draw_text("High Score: " + str(self.highscore), 22, WHITE, WIDTH / 2, HEIGHT / 2 + 40)
+        # 翻转
+        pg.display.flip()
+        # 等待敲击任意键，
+        self.wait_for_key()
 
     # 绘制文字
     def draw_text(self, text, size, color, x, y):

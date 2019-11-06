@@ -4,6 +4,8 @@ WIDTH = 480
 HEIGHT = 600
 FPS = 60
 FONT_NAME = 'arial' # 绘制时使用的字体
+HS_FILE = "highscore.txt" # 记录最高分
+SPRITESHEET = "spritesheet_jumper.png" # 精灵图片
 
 # 玩家参数
 PLAYER_ACC = 0.5
