@@ -37,7 +37,7 @@ class Game:
         self.player = Player(self)
         self.all_sprites.add(self.player)
         for plat in PLATFORM_LIST:
-            p = Platform(*plat)
+            p = Platform(self, *plat)
             self.all_sprites.add(p)
             self.platforms.add(p)
         self.run()
@@ -88,9 +88,8 @@ class Game:
         while len(self.platforms) < 6:
             width = random.randrange(50, 100)
             # 平台虽然是随机生成的，但会生成在某一个范围内
-            p = Platform(random.randrange(0, WIDTH - width),
-                         random.randrange(-75, -30),
-                         width, 20)
+            p = Platform(self, random.randrange(0, WIDTH - width),
+                         random.randrange(-75, -30))
             self.platforms.add(p)
             self.all_sprites.add(p)
 
