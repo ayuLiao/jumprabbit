@@ -27,38 +27,58 @@ class Game:
         img_dir = os.path.join(self.dir, 'img')
         # 加载精灵图片
         self.spritesheet = Spritesheet(os.path.join(img_dir, SPRITESHEET))
-
-
+        # 加载音乐
+        self.snd_dir = os.path.join(self.dir, 'snd')
+        self.jump_sound = pg.mixer.Sound(os.path.join(self.snd_dir, 'Jump33.wav'))
 
     def new(self):
         self.score = 0
         self.all_sprites = pg.sprite.Group()
         self.platforms = pg.sprite.Group()
+        self.powerups = pg.sprite.Group() # 急速飞跃道具
         self.player = Player(self)
         self.all_sprites.add(self.player)
         for plat in PLATFORM_LIST:
             p = Platform(self, *plat)
             self.all_sprites.add(p)
             self.platforms.add(p)
+        # 游戏初始时音乐
+        pg.mixer.music.load(os.path.join(self.snd_dir, 'Happy Tune.ogg'))
         self.run()
 
     def run(self):
+        # loops表示循环次数，-1表示音乐将无限播放下去
+        pg.mixer.music.play(loops=-1)
         self.playing = True
         while self.playing:
             self.clock.tick(FPS)
             self.events()
             self.update()
             self.draw()
+        # 退出后停止音乐，fadeout(time)设置音乐淡出的时间，该方法会阻塞到音乐消失
+        pg.mixer.music.fadeout(500)
 
     def update(self):
         self.all_sprites.update()
         # # 玩家在界面中时(y>0)，进行碰撞检测，检测玩家是否碰撞到平台
         if self.player.vel.y > 0:
             hits = pg.sprite.spritecollide(self.player, self.platforms, False)
+
             if hits:
-                self.player.pos.y = hits[0].rect.top
-                self.player.vel.y = 0
-        # if player reaches top 1/4 of screen
+                lowest = hits[0]
+                for hit in hits:
+                    if hit.rect.bottom > lowest.rect.bottom:
+                        lowest = hit # 保存最小的值
+                    # 避免平移效果 - 兔子最底部没有小于碰撞检测中的最小值，则不算跳跃到平台上
+                    if self.player.pos.y < lowest.rect.centery:
+                        self.player.pos.y = lowest.rect.top
+                        self.player.vel.y = 0
+                        self.player.jumping = False
+            # 会产生平移效果
+            # if hits:
+            #     self.player.pos.y = hits[0].rect.top
+            #     self.player.vel.y = 0
+
         # 玩家到达游戏框 1/4 处时（注意，游戏框，头部为0，底部为游戏框长度，到到游戏框的1/4处，表示已经到达了顶部一部分了）
         if self.player.rect.top <= HEIGHT / 4:
             # 玩家位置移动（往下移动）
@@ -105,6 +125,10 @@ class Game:
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_SPACE:
                     self.player.jump()
+            # 按钮抬起，减小跳跃速度，从而实现，快速点击，短跳，长按，长跳的效果
+            if event.type == pg.KEYUP:
+                if event.key == pg.K_SPACE:
+                    self.player.jump_cut()
 
     def draw(self):
         # 绘制
@@ -117,7 +141,9 @@ class Game:
 
     # 开始游戏的钩子函数
     def show_start_screen(self):
-        # game splash/start screen
+        pg.mixer.music.load(os.path.join(self.snd_dir, 'Yippee.ogg'))
+        pg.mixer.music.play(loops=-1)
+
         self.screen.fill(BGCOLOR) # 填充颜色
         # 绘制文字
         self.draw_text(TITLE, 48, WHITE, WIDTH / 2, HEIGHT / 4)
@@ -126,6 +152,8 @@ class Game:
         # 画布翻转
         pg.display.flip()
         self.wait_for_key() # 等待用户敲击键盘中的仍以位置
+        pg.mixer.music.fadeout(500)
+
 
     def wait_for_key(self):
         waiting = True
@@ -142,6 +170,9 @@ class Game:
         # game over/continue
         if not self.running: # 是否在运行
             return
+
+        pg.mixer.music.load(os.path.join(self.snd_dir, 'Yippee.ogg'))
+        pg.mixer.music.play(loops=-1)
         self.screen.fill(BGCOLOR) # 游戏框背景颜色填充
         # 绘制文字
         self.draw_text("GAME OVER", 48, WHITE, WIDTH / 2, HEIGHT / 4)
@@ -160,6 +191,7 @@ class Game:
         pg.display.flip()
         # 等待敲击任意键，
         self.wait_for_key()
+        pg.mixer.music.fadeout(500)
 
     # 绘制文字
     def draw_text(self, text, size, color, x, y):

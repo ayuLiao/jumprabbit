@@ -60,13 +60,21 @@ class Player(pg.sprite.Sprite):
         # 跳跃状态
         self.jump_frame = self.game.spritesheet.get_image(382, 763, 150, 181)
         self.jump_frame.set_colorkey(BLACK)
+    
+    # 短跳
+    def jump_cut(self):
+        if self.jumping:
+            if self.vel.y < -3:
+                self.vel.y = -3
 
     def jump(self):
         # 跳跃到其他平台 - 玩家对象x加减1，为了做碰撞检测，只有站立在平台上，才能实现跳跃
-        self.rect.x += 1
+        self.rect.y += 2
         hits = pg.sprite.spritecollide(self, self.game.platforms, False)
-        self.rect.x -= 1
-        if hits:
+        self.rect.y -= 2
+        if hits and not self.jumping:
+            self.game.jump_sound.play() # 播放跳跃的声音
+            self.jumping = True
             self.vel.y = -20
 
     def update(self):
