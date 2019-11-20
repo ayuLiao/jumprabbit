@@ -27,23 +27,39 @@ class Game:
         img_dir = os.path.join(self.dir, 'img')
         # 加载精灵图片
         self.spritesheet = Spritesheet(os.path.join(img_dir, SPRITESHEET))
+        # 加载云彩图片
+        self.cloud_images = []
+        for i in range(1, 4):
+            self.cloud_images.append(pg.image.load(os.path.join(img_dir, 'cloud{}.png'.format(i))).convert())
         # 加载音乐
         self.snd_dir = os.path.join(self.dir, 'snd')
+        # 跳跃时音效
         self.jump_sound = pg.mixer.Sound(os.path.join(self.snd_dir, 'Jump33.wav'))
+        # 使用道具时音效
+        self.boost_sound = pg.mixer.Sound(os.path.join(self.snd_dir, 'Boost16.wav'))
 
     def new(self):
         self.score = 0
-        self.all_sprites = pg.sprite.Group()
+        # self.all_sprites = pg.sprite.Group()
+        # 层次添加，避免元素重叠显示(如背景云遮挡住平台与玩家)
+        self.all_sprites = pg.sprite.LayeredUpdates()
         self.platforms = pg.sprite.Group()
         self.powerups = pg.sprite.Group() # 急速飞跃道具
+        self.mobs = pg.sprite.Group() # 敌人对象
+        self.clouds = pg.sprite.Group() # 云彩对象
         self.player = Player(self)
         self.all_sprites.add(self.player)
         for plat in PLATFORM_LIST:
             p = Platform(self, *plat)
-            self.all_sprites.add(p)
-            self.platforms.add(p)
-        # 游戏初始时音乐
+            # self.all_sprites.add(p)
+            # self.platforms.add(p)
+        self.mob_timer = 0
+        # 游戏的背景音乐
         pg.mixer.music.load(os.path.join(self.snd_dir, 'Happy Tune.ogg'))
+        # 创建云彩
+        for i in range(8):
+            c = Cloud(self)
+            c.rect.y += 500
         self.run()
 
     def run(self):
@@ -60,7 +76,20 @@ class Game:
 
     def update(self):
         self.all_sprites.update()
-        # # 玩家在界面中时(y>0)，进行碰撞检测，检测玩家是否碰撞到平台
+
+        # 产生敌人
+        now = pg.time.get_ticks()
+        # 通过时间间隔来判断是否要产生敌人
+        if now - self.mob_timer > 5000 + random.choice([-1000, -500, 0, 500, 1000]):
+            self.mob_timer = now
+            Mob(self)
+        # 碰撞检测 - 如果碰撞到了敌人，游戏结束
+        mob_hits = pg.sprite.spritecollide(self.player, self.mobs, False, pg.sprite.collide_mask)
+        if mob_hits:
+            self.playing = False
+
+
+        # 玩家在界面中时(y>0)，进行碰撞检测，检测玩家是否碰撞到平台
         if self.player.vel.y > 0:
             hits = pg.sprite.spritecollide(self.player, self.platforms, False)
 
@@ -82,15 +111,39 @@ class Game:
         # 玩家到达游戏框 1/4 处时（注意，游戏框，头部为0，底部为游戏框长度，到到游戏框的1/4处，表示已经到达了顶部一部分了）
         if self.player.rect.top <= HEIGHT / 4:
             # 玩家位置移动（往下移动）
-            self.player.pos.y += abs(self.player.vel.y)
+            # self.player.pos.y += abs(self.player.vel.y)
+            self.player.pos.y += max(abs(self.player.vel.y), 2)
+            # 随机生成新云朵
+            if random.randrange(100) < 10:
+                Cloud(self)
+            # 云彩同步移动
+            for cloud in self.clouds:
+                cloud.rect.y += max(abs(self.player.vel.y / 2), 2)
+
+            # 敌人位置同步往下移动
+            for mob in self.mobs:
+                mob.rect.y += max(abs(self.player.vel.y), 2)
+
             # 平台在游戏框外时，将其注销，避免资源浪费
             for plat in self.platforms:
                 # 平台移动位置（往下移动，移动的距离与玩家相同，这样玩家才能依旧站立在原本的平台上）
-                plat.rect.y += abs(self.player.vel.y)
+                # plat.rect.y += abs(self.player.vel.y)
+                plat.rect.y += max(abs(self.player.vel.y), 2)
                 if plat.rect.top >= HEIGHT: 
                     plat.kill()
                     # 分数增加 - 平台销毁，分数相加
                     self.score += 10
+            
+
+
+        # 碰撞检测 - 玩家碰撞到急速飞跃道具
+        pow_hits = pg.sprite.spritecollide(self.player, self.powerups, True)
+        for pow in pow_hits:
+            # 道具类型 - 不同道具可以实现不同的效果
+            if pow.type == 'boost':
+                self.boost_sound.play() # 播放相应的音效
+                self.player.vel.y = -BOOST_POWER # 快递移动的距离
+                self.player.jumping = False # 此时不为跳跃状态
 
          # 死亡 - 玩家底部大于游戏框高度
         if self.player.rect.bottom > HEIGHT:
@@ -112,6 +165,8 @@ class Game:
                          random.randrange(-75, -30))
             self.platforms.add(p)
             self.all_sprites.add(p)
+
+        
 
     # 事件处理
     def events(self):

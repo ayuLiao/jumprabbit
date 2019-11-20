@@ -13,6 +13,18 @@ PLAYER_FRICTION = -0.12
 PLAYER_GRAV = 0.8
 PLAYER_JUMP = 20
 
+# 道具属性
+BOOST_POWER = 60
+POW_SPAWN_PCT = 7
+
+# 不同元素在不同层
+PLAYER_LAYER = 2 # 玩家
+PLATFORM_LAYER = 1 # 平台
+POW_LAYER = 1 # 道具
+MOB_LAYER = 2 # 敌人
+CLOUD_LAYER = 0 # 云
+
+
 # 起始平台
 PLATFORM_LIST = [(0, HEIGHT - 60),
                  (WIDTH / 2 - 50, HEIGHT * 3 / 4 - 50),

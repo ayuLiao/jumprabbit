@@ -24,7 +24,10 @@ class Spritesheet:
 
 class Player(pg.sprite.Sprite):
     def __init__(self, game):
-        pg.sprite.Sprite.__init__(self)
+        self._layer = PLAYER_LAYER
+        self.groups = game.all_sprites
+        pg.sprite.Sprite.__init__(self, self.groups)
+        # pg.sprite.Sprite.__init__(self)
         self.game = game
         # 不同的状态
         self.walking = False
@@ -141,10 +144,14 @@ class Player(pg.sprite.Sprite):
                 self.image = self.standing_frames[self.current_frame]
                 self.rect = self.image.get_rect()
                 self.rect.bottom = bottom
+        self.mask = pg.mask.from_surface(self.image) # 创建蒙版
 
 class Platform(pg.sprite.Sprite):
     def __init__(self, game, x, y):
-        pg.sprite.Sprite.__init__(self)
+        self._layer = PLATFORM_LAYER  # 对应的图层
+        self.groups = game.all_sprites, game.platforms # 所在的组
+        pg.sprite.Sprite.__init__(self, self.groups) # 添加、实例化
+        # pg.sprite.Sprite.__init__(self)
         self.game = game
         # 载入图片
         images = [self.game.spritesheet.get_image(0, 288, 380, 94),
@@ -155,3 +162,97 @@ class Platform(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        # 随机在平台上初始化道具
+        if random.randrange(100) < POW_SPAWN_PCT:
+            Pow(self.game, self)
+
+
+# 道具对象
+class Pow(pg.sprite.Sprite):
+    def __init__(self, game, plat):
+        self._layer = POW_LAYER
+        self.groups = game.all_sprites, game.powerups
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game # 整个游戏对象
+        self.plat = plat # 平台对象
+        self.type = random.choice(['boost'])
+        # 加载道具图片
+        self.image = self.game.spritesheet.get_image(820, 1805, 71, 70)
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        # 道具出现在平台中间的上方
+        self.rect.centerx = self.plat.rect.centerx
+        self.rect.bottom = self.plat.rect.top - 5
+
+    def update(self):
+        # 更新时，避免道具一同移动
+        self.rect.bottom = self.plat.rect.top - 5
+        # 如果道具对应的平台已经被消除，那么道具也要被消除
+        if not self.game.platforms.has(self.plat):
+            self.kill() # 消除道具
+
+class Mob(pg.sprite.Sprite):
+    def __init__(self, game):
+        self._layer = MOB_LAYER
+        self.groups = game.all_sprites, game.mobs
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image_up = self.game.spritesheet.get_image(566, 510, 122, 139)
+        self.image_up.set_colorkey(BLACK)
+        self.image_down = self.game.spritesheet.get_image(568, 1534, 122, 135)
+        self.image_down.set_colorkey(BLACK)
+        self.image = self.image_up # 默认为向上的图片
+        self.rect = self.image.get_rect()
+        # x轴中心位置随机选择
+        self.rect.centerx = random.choice([-100, WIDTH + 100])
+        # 随机x轴速度
+        self.vx = random.randrange(1, 4)
+        if self.rect.centerx > WIDTH:
+            self.vx *= -1
+        # 随机敌人y轴位置
+        self.rect.y = random.randrange(HEIGHT / 2)
+        self.vy = 0 # y轴速度默认为0
+        self.dy = 0.5
+
+    def update(self):
+        self.rect.x += self.vx # x轴位置移动
+        self.vy += self.dy
+        # 实现上下抖动移动的效果
+        if self.vy > 3 or self.vy < -3: 
+            self.dy *= -1
+        center = self.rect.center
+        # 上下移动方向不同，使用不同的图片
+        if self.dy < 0:
+            self.image = self.image_up
+        else:
+            self.image = self.image_down
+        self.rect = self.image.get_rect()
+        self.mask = pg.mask.from_surface(self.image) # 创建蒙版
+        self.rect.center = center
+        # y轴具体的移动
+        self.rect.y += self.vy
+        # 超过屏幕范围，删除敌人
+        if self.rect.left > WIDTH + 100 or self.rect.right < -100:
+            self.kill()
+
+
+class Cloud(pg.sprite.Sprite):
+    def __init__(self, game):
+        self._layer = CLOUD_LAYER
+        self.groups = game.all_sprites, game.clouds
+        pg.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = random.choice(self.game.cloud_images)
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        # 随机出现位置
+        scale = random.randrange(50, 101) / 100
+        self.image = pg.transform.scale(self.image, (int(self.rect.width * scale),
+                                                     int(self.rect.height * scale)))
+        self.rect.x = random.randrange(WIDTH - self.rect.width)
+        self.rect.y = random.randrange(-500, -50)
+
+    def update(self):
+        # 云朵大于2倍高度，就被消除
+        if self.rect.top > HEIGHT * 2:
+            self.kill()
